@@ -1,0 +1,4 @@
+n11643528.ifn666.citadel.qut.edu.au {
+  reverse_proxy /assessment02/api/* localhost:4000
+  encode gzip
+}
