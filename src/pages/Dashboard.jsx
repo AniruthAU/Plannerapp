@@ -8,6 +8,9 @@ const Dashboard = () => {
   const [planners, setPlanners] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("az"); // or "za"
+  const [loading, setLoading] = useState(true);
 
   // Fetch all planners
   const fetchPlanners = async () => {
@@ -20,6 +23,8 @@ const Dashboard = () => {
       setPlanners(res.data);
     } catch (err) {
       console.error("❌ Error fetching planners", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -58,17 +63,54 @@ const Dashboard = () => {
     }
   };
 
+  // Filter planners based on search term
+  const filteredPlanners = planners.filter((planner) =>
+    planner.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    planner.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Sort planners based on sortOrder
+  const sortedPlanners = [...filteredPlanners].sort((a, b) => {
+    if (sortOrder === "az") {
+      return a.title.localeCompare(b.title);
+    } else {
+      return b.title.localeCompare(a.title);
+    }
+  });
+
   useEffect(() => {
     fetchPlanners();
   }, []);
 
   return (
     <div className="dashboard">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {/* Search and Sort Controls */}
+      <div className="search-sort">
+        <input
+          type="text"
+          placeholder="Search planners..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+          <option value="az">Sort A → Z</option>
+          <option value="za">Sort Z → A</option>
+        </select>
+      </div>
+
+      {/* Header and Logout Button */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <h2>📋 Your Planners</h2>
         <button onClick={logout}>🚪 Logout</button>
       </div>
 
+      {/* Form to Create a New Planner */}
       <div className="form">
         <input
           type="text"
@@ -85,16 +127,30 @@ const Dashboard = () => {
         <button onClick={createPlanner}>Create</button>
       </div>
 
-      <ul className="planner-list">
-        {planners.map((p) => (
-          <li key={p._id}>
-            <Link to={`/planners/${p._id}/tasks`}>
-              <strong>{p.title}</strong> - {p.description}
-            </Link>
-            <button onClick={() => deletePlanner(p._id)}>🗑️</button>
-          </li>
-        ))}
-      </ul>
+      {/* Loading State */}
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        // If no planners are available
+        <div>
+          {sortedPlanners.length === 0 ? (
+            <p>No planners available</p>
+          ) : (
+            <ul className="planner-list">
+              {sortedPlanners.map((p) => (
+                <li key={p._id}>
+                  <Link to={`/planners/${p._id}/tasks`}>
+                    <strong>{p.title}</strong> - {p.description}
+                  </Link>
+                  <button onClick={() => deletePlanner(p._id)} aria-label="Delete Planner">
+                    🗑️
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 };

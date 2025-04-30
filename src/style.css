@@ -76,3 +76,13 @@ li button {
     transform: translateY(0);
   }
 }
+.search-sort {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.search-sort input,
+.search-sort select {
+  padding: 0.4rem;
+  font-size: 1rem;
+}
