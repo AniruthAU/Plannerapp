@@ -1,39 +1,46 @@
+// src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "../style.css";
 
 const Dashboard = () => {
   const { token, logout } = useAuth();
   const [planners, setPlanners] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortOrder, setSortOrder] = useState("az"); // or "za"
-  const [loading, setLoading] = useState(true);
+  const [dueDate, setDueDate] = useState("");
 
-  // Fetch all planners
   const fetchPlanners = async () => {
     try {
       const res = await axios.get("http://localhost:4000/api/planners", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setPlanners(res.data);
     } catch (err) {
       console.error("❌ Error fetching planners", err);
-    } finally {
-      setLoading(false);
+      toast.error("Failed to fetch planners");
     }
   };
 
-  // Create a new planner
   const createPlanner = async () => {
+    if (!title.trim() || !dueDate) {
+      toast.warning("Title and due date are required.");
+      return;
+    }
+
+    if (new Date(dueDate) < new Date(new Date().toDateString())) {
+      toast.warning("Due date cannot be in the past.");
+      return;
+    }
+
     try {
       await axios.post(
         "http://localhost:4000/api/planners",
-        { title, description },
+        { title, description, dueDate },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -43,75 +50,42 @@ const Dashboard = () => {
       );
       setTitle("");
       setDescription("");
-      fetchPlanners(); // Refresh list
+      setDueDate("");
+      fetchPlanners();
+      toast.success("Planner created successfully");
     } catch (err) {
       console.error("❌ Error creating planner", err);
+      toast.error("Failed to create planner");
     }
   };
 
-  // Delete a planner
   const deletePlanner = async (id) => {
     try {
       await axios.delete(`http://localhost:4000/api/planners/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      fetchPlanners(); // Refresh list
+      fetchPlanners();
+      toast.success("Planner deleted");
     } catch (err) {
       console.error("❌ Error deleting planner", err);
+      toast.error("Failed to delete planner");
     }
   };
-
-  // Filter planners based on search term
-  const filteredPlanners = planners.filter((planner) =>
-    planner.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    planner.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Sort planners based on sortOrder
-  const sortedPlanners = [...filteredPlanners].sort((a, b) => {
-    if (sortOrder === "az") {
-      return a.title.localeCompare(b.title);
-    } else {
-      return b.title.localeCompare(a.title);
-    }
-  });
 
   useEffect(() => {
     fetchPlanners();
   }, []);
 
+  const isButtonDisabled = !(title.trim() && description.trim() && dueDate);
+
   return (
-    <div className="dashboard">
-      {/* Search and Sort Controls */}
-      <div className="search-sort">
-        <input
-          type="text"
-          placeholder="Search planners..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-          <option value="az">Sort A → Z</option>
-          <option value="za">Sort Z → A</option>
-        </select>
-      </div>
-
-      {/* Header and Logout Button */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+    <div className="dashboard-container">
+      <div className="dashboard-header">
         <h2>📋 Your Planners</h2>
-        <button onClick={logout}>🚪 Logout</button>
+        <button className="logout-btn" onClick={logout}>Logout</button>
       </div>
 
-      {/* Form to Create a New Planner */}
-      <div className="form">
+      <div className="create-form">
         <input
           type="text"
           placeholder="Title"
@@ -124,33 +98,50 @@ const Dashboard = () => {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <button onClick={createPlanner}>Create</button>
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+        <button 
+          onClick={createPlanner}
+          disabled={isButtonDisabled}
+          className={isButtonDisabled ? 'btn-disabled' : 'btn-active'}
+        >
+          Create
+        </button>
       </div>
 
-      {/* Loading State */}
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        // If no planners are available
-        <div>
-          {sortedPlanners.length === 0 ? (
-            <p>No planners available</p>
-          ) : (
-            <ul className="planner-list">
-              {sortedPlanners.map((p) => (
-                <li key={p._id}>
-                  <Link to={`/planners/${p._id}/tasks`}>
-                    <strong>{p.title}</strong> - {p.description}
-                  </Link>
-                  <button onClick={() => deletePlanner(p._id)} aria-label="Delete Planner">
-                    🗑️
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      <table className="planner-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Due Date</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {planners.map((p, index) => (
+            <tr key={p._id}>
+              <td>{index + 1}</td>
+              <td>
+                <Link to={`/planners/${p._id}/tasks`}>{p.title}</Link>
+              </td>
+              <td>{p.description}</td>
+              <td>{p.dueDate ? new Date(p.dueDate).toLocaleDateString() : "—"}</td>
+              <td>{new Date(p.createdAt).toLocaleDateString()}</td>
+              <td>
+                <button onClick={() => deletePlanner(p._id)}>🗑️</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <ToastContainer position="top-center" />
     </div>
   );
 };

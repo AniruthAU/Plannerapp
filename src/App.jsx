@@ -1,28 +1,21 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
-import "./style.css";
 
-function App() {
+const App = () => {
   const { token } = useAuth();
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {token ? (
-          <>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/planners/:id/tasks" element={<Tasks />} />
-          </>
-        ) : (
-          <Route path="*" element={<Login />} />
-        )}
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+      <Route path="/login" element={!token ? <Login /> : <Navigate to="/dashboard" />} />
+      <Route path="/dashboard" element={token ? <Dashboard /> : <Navigate to="/login" />} />
+      <Route path="/planners/:id/tasks" element={token ? <Tasks /> : <Navigate to="/login" />} />
+    </Routes>
   );
-}
+};
 
 export default App;
